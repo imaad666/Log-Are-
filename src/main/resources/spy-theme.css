@@ -1,0 +1,266 @@
+/* Spy Theme CSS for NetworkSpy Application */
+
+.root {
+    -fx-base: #0a0a0a;
+    -fx-background: #0a0a0a;
+    -fx-control-inner-background: #1a1a1a;
+    -fx-control-inner-background-alt: #2a2a2a;
+    -fx-accent: #00ff00;
+    -fx-focus-color: #00ff00;
+    -fx-faint-focus-color: #00ff0022;
+    -fx-selection-bar: #00ff0044;
+    -fx-selection-bar-non-focused: #00ff0022;
+}
+
+/* ScrollBar Styling */
+.scroll-bar {
+    -fx-background-color: #1a1a1a;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #0a0a0a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #00ff00;
+    -fx-background-radius: 0;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #00ff00aa;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: #00ff00;
+}
+
+/* ListView Styling */
+.list-view {
+    -fx-background-color: #0a0a0a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+}
+
+.list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0c0;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 5px;
+}
+
+.list-view .list-cell:selected {
+    -fx-background-color: #00ff0033;
+    -fx-text-fill: #00ff00;
+}
+
+.list-view .list-cell:hover {
+    -fx-background-color: #00ff0011;
+}
+
+/* Button Styling */
+.button {
+    -fx-background-color: transparent;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+    -fx-text-fill: #00ff00;
+    -fx-font-family: "Courier New", monospace;
+    -fx-font-weight: bold;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+
+.button:hover {
+    -fx-background-color: #00ff0022;
+}
+
+.button:pressed {
+    -fx-background-color: #00ff0044;
+}
+
+/* Label Styling */
+.label {
+    -fx-text-fill: #c0c0c0;
+    -fx-font-family: "Courier New", monospace;
+}
+
+/* Text Field Styling */
+.text-field {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+    -fx-text-fill: #00ff00;
+    -fx-font-family: "Courier New", monospace;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+
+.text-field:focused {
+    -fx-border-color: #00ff00;
+    -fx-border-width: 2px;
+}
+
+/* Split Pane Styling */
+.split-pane {
+    -fx-background-color: #0a0a0a;
+}
+
+.split-pane .split-pane-divider {
+    -fx-background-color: #00ff00;
+    -fx-padding: 0 1 0 1;
+}
+
+/* Menu Styling */
+.menu-bar {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 0 0 1 0;
+}
+
+.menu-bar .menu {
+    -fx-text-fill: #00ff00;
+}
+
+.menu-item {
+    -fx-background-color: #1a1a1a;
+    -fx-text-fill: #c0c0c0;
+}
+
+.menu-item:hover {
+    -fx-background-color: #00ff0022;
+}
+
+/* Progress Bar Styling */
+.progress-bar {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #00ff00;
+    -fx-background-radius: 0;
+}
+
+/* Tab Pane Styling */
+.tab-pane {
+    -fx-background-color: #0a0a0a;
+}
+
+.tab-pane .tab-header-area {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+    -fx-text-fill: #c0c0c0;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #00ff0022;
+    -fx-text-fill: #00ff00;
+}
+
+/* Table View Styling */
+.table-view {
+    -fx-background-color: #0a0a0a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+}
+
+.table-view .column-header {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 0 1 1 0;
+    -fx-text-fill: #00ff00;
+    -fx-font-weight: bold;
+}
+
+.table-view .table-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0c0;
+    -fx-border-color: #333333;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #00ff0033;
+}
+
+/* Custom Classes */
+.spy-title {
+    -fx-font-family: "Courier New", monospace;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #00ff00;
+}
+
+.spy-subtitle {
+    -fx-font-family: "Courier New", monospace;
+    -fx-font-size: 12px;
+    -fx-text-fill: #c0c0c0;
+}
+
+.spy-status-active {
+    -fx-text-fill: #00ff00;
+    -fx-font-weight: bold;
+}
+
+.spy-status-inactive {
+    -fx-text-fill: #ff4444;
+    -fx-font-weight: bold;
+}
+
+.spy-panel {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 1px;
+    -fx-padding: 15px;
+}
+
+.spy-header {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 0 0 2 0;
+    -fx-padding: 15px;
+}
+
+.spy-footer {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #00ff00;
+    -fx-border-width: 2 0 0 0;
+    -fx-padding: 10px;
+}
+
+/* Animation for blinking text */
+@keyframes blink {
+    0% {
+        -fx-opacity: 1.0;
+    }
+
+    50% {
+        -fx-opacity: 0.3;
+    }
+
+    100% {
+        -fx-opacity: 1.0;
+    }
+}
+
+.spy-blink {
+    -fx-animation: blink 2s infinite;
+}
