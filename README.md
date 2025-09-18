@@ -1,5 +1,3 @@
-# 🕵️ NetworkSpy - Network Intelligence Dashboard
-
 A spy-themed network monitoring application built in Java that provides real-time visibility into your WiFi network traffic and connected devices.
 
 ## 🚀 Features
