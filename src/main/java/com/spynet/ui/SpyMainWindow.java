@@ -45,8 +45,8 @@ public class SpyMainWindow {
     private ObservableList<NetworkDevice> deviceList;
     private Label statusLabel;
     private Label statsLabel;
-    private AtomicInteger totalEvents = new AtomicInteger(0);
-    private AtomicInteger activeDevices = new AtomicInteger(0);
+    private final AtomicInteger totalEvents = new AtomicInteger(0);
+    private final AtomicInteger activeDevices = new AtomicInteger(0);
     
     // Spy theme colors
     private static final String BACKGROUND_COLOR = "#0a0a0a";
@@ -70,8 +70,8 @@ public class SpyMainWindow {
         networkService.setEventListener(this::onNetworkEvent);
         networkService.setDeviceListener(this::onDeviceUpdate);
         
-        // Start monitoring
-        networkService.startMonitoring();
+        // Don't start automatically - let user click START
+        statusLabel.setText("🟡 READY - Click START SCAN to begin monitoring");
         
         primaryStage.show();
     }
@@ -133,8 +133,29 @@ public class SpyMainWindow {
         Button clearBtn = createSpyButton("🗑️ CLEAR LOGS", TEXT_COLOR);
         Button exportBtn = createSpyButton("💾 EXPORT", TEXT_COLOR);
         
-        startBtn.setOnAction(e -> networkService.startMonitoring());
-        stopBtn.setOnAction(e -> networkService.stopMonitoring());
+        startBtn.setOnAction(e -> {
+            if (networkService != null) {
+                networkService.startMonitoring();
+                statusLabel.setText("🟢 MONITORING ACTIVE");
+                statusLabel.setTextFill(Color.web(ACCENT_COLOR));
+                
+                Platform.runLater(() -> {
+                    NetworkEvent statusEvent = new NetworkEvent(
+                        NetworkEvent.EventType.DEVICE_CONNECTED,
+                        "SYSTEM", "SYSTEM", "NetworkSpy",
+                        "🕵️ Monitoring started - tracking HTTPS connections and network activity", 0
+                    );
+                    onNetworkEvent(statusEvent);
+                });
+            }
+        });
+        stopBtn.setOnAction(e -> {
+            if (networkService != null) {
+                networkService.stopMonitoring();
+                statusLabel.setText("🔴 MONITORING STOPPED");
+                statusLabel.setTextFill(Color.web(HIGHLIGHT_COLOR));
+            }
+        });
         clearBtn.setOnAction(e -> clearLogs());
         exportBtn.setOnAction(e -> exportLogs());
         
@@ -285,9 +306,6 @@ public class SpyMainWindow {
         
         statsLabel.setText(String.format("Events: %d | Active Devices: %d | Data Captured: %s", 
             totalEvents.get(), activeDevices.get(), dataFormatted));
-        
-        statusLabel.setText("🟢 MONITORING ACTIVE");
-        statusLabel.setTextFill(Color.web(ACCENT_COLOR));
     }
     
     private String formatBytes(long bytes) {

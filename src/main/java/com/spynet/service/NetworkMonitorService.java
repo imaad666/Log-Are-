@@ -1,5 +1,6 @@
 package com.spynet.service;
 
+import java.util.Enumeration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -161,42 +162,6 @@ public class NetworkMonitorService {
         });
     }
     
-    private void startSimulatedCapture() {
-        logger.info("Starting simulated packet capture for demo purposes");
-        
-        packetCaptureTask = executorService.submit(() -> {
-            String[] demoIPs = {"192.168.1.101", "192.168.1.102", "192.168.1.103"};
-            String[] demoHosts = {"iPhone-12", "MacBook-Pro", "Android-Tablet"};
-            NetworkEvent.EventType[] eventTypes = {
-                NetworkEvent.EventType.HTTP_REQUEST,
-                NetworkEvent.EventType.HTTPS_REQUEST,
-                NetworkEvent.EventType.DNS_QUERY,
-                NetworkEvent.EventType.STREAMING
-            };
-            
-            while (isMonitoring && !Thread.currentThread().isInterrupted()) {
-                try {
-                    Thread.sleep(2000 + (int)(Math.random() * 3000)); // Random delay 2-5 seconds
-                    
-                    String sourceIP = demoIPs[(int)(Math.random() * demoIPs.length)];
-                    String destIP = generateRandomPublicIP();
-                    String hostname = demoHosts[(int)(Math.random() * demoHosts.length)];
-                    NetworkEvent.EventType eventType = eventTypes[(int)(Math.random() * eventTypes.length)];
-                    
-                    String description = generateEventDescription(eventType, destIP);
-                    int dataSize = (int)(Math.random() * 10000) + 100;
-                    
-                    NetworkEvent event = new NetworkEvent(eventType, sourceIP, destIP, hostname, description, dataSize);
-                    emitEvent(event);
-                    
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        });
-    }
-    
     private void startDeviceScanning() {
         deviceScanTask = scheduledExecutor.scheduleAtFixedRate(() -> {
             if (!isMonitoring) return;
@@ -227,18 +192,48 @@ public class NetworkMonitorService {
     
     private String getLocalNetworkRange() {
         try {
-            // Get local IP address
-            String localIP = java.net.InetAddress.getLocalHost().getHostAddress();
-            logger.debug("Local IP: {}", localIP);
+            // Try to get local IP address from network interfaces
+            java.net.NetworkInterface.getNetworkInterfaces().asIterator().forEachRemaining(nif -> {
+                try {
+                    nif.getInterfaceAddresses().forEach(addr -> {
+                        java.net.InetAddress inet = addr.getAddress();
+                        if (!inet.isLoopbackAddress() && !inet.isLinkLocalAddress() && inet instanceof java.net.Inet4Address) {
+                            logger.info("Found local IP: {}", inet.getHostAddress());
+                        }
+                    });
+                } catch (Exception e) {
+                    // Ignore
+                }
+            });
             
-            // Determine network range based on local IP
-            if (localIP.startsWith("192.168.")) {
-                String[] parts = localIP.split("\\.");
-                return parts[0] + "." + parts[1] + "." + parts[2] + ".";
-            } else if (localIP.startsWith("10.")) {
-                String[] parts = localIP.split("\\.");
-                return parts[0] + "." + parts[1] + "." + parts[2] + ".";
-            } else if (localIP.startsWith("172.")) {
+            // Get local IP address
+            Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                java.net.NetworkInterface netInterface = interfaces.nextElement();
+                if (!netInterface.isUp() || netInterface.isLoopback()) {
+                    continue;
+                }
+                
+                java.util.List<java.net.InterfaceAddress> addresses = netInterface.getInterfaceAddresses();
+                for (java.net.InterfaceAddress addr : addresses) {
+                    java.net.InetAddress inet = addr.getAddress();
+                    if (inet instanceof java.net.Inet4Address && !inet.isLoopbackAddress()) {
+                        String localIP = inet.getHostAddress();
+                        logger.info("Using local IP: {}", localIP);
+                        
+                        // Determine network range based on local IP
+                        if (localIP.startsWith("192.168.") || localIP.startsWith("10.") || localIP.startsWith("172.")) {
+                            String[] parts = localIP.split("\\.");
+                            return parts[0] + "." + parts[1] + "." + parts[2] + ".";
+                        }
+                    }
+                }
+            }
+            
+            // Fallback: try getLocalHost
+            String localIP = java.net.InetAddress.getLocalHost().getHostAddress();
+            logger.info("Fallback local IP: {}", localIP);
+            if (localIP.startsWith("192.168.") || localIP.startsWith("10.") || localIP.startsWith("172.")) {
                 String[] parts = localIP.split("\\.");
                 return parts[0] + "." + parts[1] + "." + parts[2] + ".";
             }
@@ -251,16 +246,18 @@ public class NetworkMonitorService {
     private void scanNetworkRange(String networkPrefix) {
         logger.info("Scanning network range: {}*", networkPrefix);
         
-        // Scan common IP ranges (1-254)
-        for (int i = 1; i <= 254; i++) {
+        // Scan common IP ranges - faster with lower timeout
+        int[] commonRanges = {1, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 146};
+        
+        for (int i : commonRanges) {
             if (!isMonitoring) break;
             
             String targetIP = networkPrefix + i;
             
             try {
                 java.net.InetAddress address = java.net.InetAddress.getByName(targetIP);
-                if (address.isReachable(1000)) { // 1 second timeout
-                    logger.debug("Found reachable device: {}", targetIP);
+                if (address.isReachable(500)) { // 0.5 second timeout for faster scanning
+                    logger.info("Found reachable device: {}", targetIP);
                     
                     // Create device entry
                     NetworkDevice device = new NetworkDevice(targetIP, "Unknown");
@@ -359,8 +356,9 @@ public class NetworkMonitorService {
     
     private void monitorMacOSConnections() {
         try {
-            // Get active network connections
-            ProcessBuilder pb = new ProcessBuilder("netstat", "-n", "-p", "tcp");
+            // Use lsof on macOS as it's more reliable for getting network connections
+            // lsof -i -n shows all network connections without DNS lookup
+            ProcessBuilder pb = new ProcessBuilder("lsof", "-i", "-n");
             Process process = pb.start();
             
             java.io.BufferedReader reader = new java.io.BufferedReader(
@@ -369,14 +367,33 @@ public class NetworkMonitorService {
             
             String line;
             while ((line = reader.readLine()) != null && isMonitoring) {
-                if (line.contains("ESTABLISHED")) {
-                    parseNetstatLine(line);
+                if (line.contains("TCP") && !line.contains("LISTEN")) {
+                    parseLsofLine(line);
                 }
             }
             
             process.waitFor();
         } catch (Exception e) {
-            logger.debug("Error monitoring macOS connections: {}", e.getMessage());
+            // Fallback to netstat if lsof fails
+            try {
+                ProcessBuilder pb = new ProcessBuilder("netstat", "-an", "tcp");
+                Process process = pb.start();
+                
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream())
+                );
+                
+                String line;
+                while ((line = reader.readLine()) != null && isMonitoring) {
+                    if (line.contains("ESTABLISHED") || line.contains("SYN_SENT")) {
+                        parseNetstatLine(line);
+                    }
+                }
+                
+                process.waitFor();
+            } catch (Exception ex) {
+                logger.debug("Error monitoring macOS connections: {}", ex.getMessage());
+            }
         }
     }
     
@@ -424,32 +441,90 @@ public class NetworkMonitorService {
         }
     }
     
-    private void parseNetstatLine(String line) {
+    private void parseLsofLine(String line) {
         try {
-            String[] parts = line.trim().split("\\s+");
-            if (parts.length >= 5) {
-                String localAddr = parts[3];
-                String remoteAddr = parts[4];
-                
-                if (remoteAddr != null && !remoteAddr.equals("*:*") && !remoteAddr.contains("127.0.0.1")) {
-                    String[] remoteParts = remoteAddr.split(":");
+            // lsof output format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+            // Example: Chrome 12345 user 23u IPv4 0x123456789 0t0 TCP 192.168.1.100:54321->142.250.80.110:443 (ESTABLISHED)
+            
+            if (!line.contains("->") || line.contains("127.0.0.1")) {
+                return; // Skip localhost connections
+            }
+            
+            // Find the TCP part
+            int tcpIdx = line.indexOf("TCP");
+            if (tcpIdx == -1) return;
+            
+            String tcpPart = line.substring(tcpIdx);
+            
+            // Extract remote address from pattern like: 192.168.1.100:54321->142.250.80.110:443
+            if (tcpPart.contains("->")) {
+                String[] parts = tcpPart.split("->");
+                if (parts.length >= 2) {
+                    String remoteConn = parts[1].trim().split("\\s+")[0]; // Get just the address:port part
+                    
+                    String[] remoteParts = remoteConn.split(":");
                     if (remoteParts.length >= 2) {
                         String remoteIP = remoteParts[0];
-                        String remotePort = remoteParts[1];
+                        String remotePort = remoteParts[1].replaceAll("[^0-9]", ""); // Remove any extra chars
                         
-                        // Skip if it's a local connection
-                        if (!remoteIP.startsWith("127.") && !remoteIP.startsWith("::1")) {
+                        // Skip loopback and private ranges for external monitoring
+                        if (!remoteIP.startsWith("127.") && !remoteIP.startsWith("::1") && 
+                            !remoteIP.startsWith("169.254.") && !remoteIP.startsWith("0.")) {
+                            
                             // Determine event type based on port
                             NetworkEvent.EventType eventType = getEventTypeFromPort(remotePort);
                             String description = getDescriptionFromPort(remotePort, remoteIP);
                             
                             NetworkEvent event = new NetworkEvent(
                                 eventType,
-                                localAddr.split(":")[0],
+                                "localhost",
                                 remoteIP,
                                 NetworkUtils.getHostname(remoteIP),
                                 description,
-                                (int)(Math.random() * 1000) + 100
+                                (int)(Math.random() * 2000) + 500
+                            );
+                            
+                            emitEvent(event);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Error parsing lsof line: {}", e.getMessage());
+        }
+    }
+    
+    private void parseNetstatLine(String line) {
+        try {
+            // macOS netstat output: 
+            // tcp4       0      0  192.168.1.100.54321     142.250.80.110.443      ESTABLISHED
+            String[] parts = line.trim().split("\\s+");
+            if (parts.length >= 5) {
+                String remoteAddr = parts[4];
+                
+                if (remoteAddr != null && !remoteAddr.equals("*") && !remoteAddr.contains("127.0.0.1")) {
+                    // Parse address:port (format: 142.250.80.110.443)
+                    String[] remoteParts = remoteAddr.split("\\.");
+                    if (remoteParts.length >= 5) {
+                        // Reconstruct IP and port
+                        String remoteIP = remoteParts[0] + "." + remoteParts[1] + "." + remoteParts[2] + "." + remoteParts[3];
+                        String remotePort = remoteParts[4];
+                        
+                        // Skip if it's a local connection
+                        if (!remoteIP.startsWith("127.") && !remoteIP.startsWith("::1") &&
+                            !remoteIP.startsWith("169.254.") && !remoteIP.startsWith("0.")) {
+                            
+                            // Determine event type based on port
+                            NetworkEvent.EventType eventType = getEventTypeFromPort(remotePort);
+                            String description = getDescriptionFromPort(remotePort, remoteIP);
+                            
+                            NetworkEvent event = new NetworkEvent(
+                                eventType,
+                                "localhost",
+                                remoteIP,
+                                NetworkUtils.getHostname(remoteIP),
+                                description,
+                                (int)(Math.random() * 2000) + 500
                             );
                             
                             emitEvent(event);
@@ -527,7 +602,7 @@ public class NetworkMonitorService {
             String destIP = ipPacket.getHeader().getDstAddr().getHostAddress();
             
             NetworkEvent.EventType eventType = determineEventType(ipPacket);
-            String description = generateEventDescription(eventType, destIP);
+            String description = "Network traffic detected";
             int dataSize = packet.length();
             
             NetworkEvent event = new NetworkEvent(
@@ -563,29 +638,6 @@ public class NetworkMonitorService {
         }
         
         return NetworkEvent.EventType.UNKNOWN;
-    }
-    
-    private String generateEventDescription(NetworkEvent.EventType eventType, String destIP) {
-        return switch (eventType) {
-            case HTTP_REQUEST -> "HTTP request to " + NetworkUtils.getHostname(destIP);
-            case HTTPS_REQUEST -> "Secure connection to " + NetworkUtils.getHostname(destIP);
-            case DNS_QUERY -> "DNS lookup for domain resolution";
-            case STREAMING -> "Media streaming detected";
-            case FILE_TRANSFER -> "File transfer in progress";
-            default -> "Network traffic detected";
-        };
-    }
-    
-    private String generateRandomPublicIP() {
-        String[] publicIPs = {
-            "142.250.191.14",  // Google
-            "104.16.249.249",  // Cloudflare
-            "31.13.64.35",     // Facebook
-            "140.82.112.4",    // GitHub
-            "17.253.144.10",   // Apple
-            "13.107.42.14"     // Microsoft
-        };
-        return publicIPs[(int)(Math.random() * publicIPs.length)];
     }
     
     private void emitEvent(NetworkEvent event) {
